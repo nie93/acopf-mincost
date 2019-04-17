@@ -1,9 +1,9 @@
 from arithmetic import *
-from case import *
+import case
 # import ipopt
 import numpy as np
 from scipy.sparse import *
-from scipy.optimize import *
+from scipy.optimize import minimize
 from time import time
 from pdb import *
 
@@ -19,13 +19,13 @@ class opf_mdl(object):
         return costfcn_jac(x, self.case)
 
     def constraints(self, x):       
-        const = Const() 
+        const = case.Const() 
         ii = get_var_idx(self.case)
         tload = sum(self.case.bus[:,const.PD]) / self.case.mva_base
         return sum(x[ii['i1']['pg']:ii['iN']['pg']]) - tload
 
     def jacobian(self, x):        
-        const = Const() 
+        const = case.Const() 
         ii = get_var_idx(self.case)
         simple_powerbalance = np.zeros_like(x)
         simple_powerbalance[ii['i1']['pg']:ii['iN']['pg']] = 1
@@ -53,7 +53,7 @@ class opf_mdl(object):
 
 
 def runcopf(c, flat_start):
-    const = Const()
+    const = case.Const()
     
     nb     = c.bus.shape[0]
     ng     = c.gen.shape[0]
@@ -63,7 +63,7 @@ def runcopf(c, flat_start):
     neqnln = 2 * nb
     niqnln = nbr
 
-    ii = get_var_idx(c)
+    ii = case.get_var_idx(c)
 
     if flat_start:
         x0 = np.concatenate((deg2rad(c.bus.take(const.VA, axis=1)), \
@@ -125,25 +125,6 @@ def runcopf(c, flat_start):
     res = minimize(f_fcn, x0, jac=df_fcn, hess=d2f_fcn, bounds=bnds, \
         constraints=all_cons, options={'disp': False})
 
-    ii = get_var_idx(c)
-    res_va = rad2deg(res.x[ii['i1']['va']:ii['iN']['va']])
-    res_vm = res.x[ii['i1']['vm']:ii['iN']['vm']]
-    res_pg = res.x[ii['i1']['pg']:ii['iN']['pg']] * c.mva_base
-    res_qg = res.x[ii['i1']['qg']:ii['iN']['qg']] * c.mva_base
-
-    float_fmtr = {'float_kind': lambda x: "%7.3f" % x}
-
-    print('___________')  
-    print('     Status | Exit mode %d' % res.status)
-    print('    Message | %s' % res.message)
-    print('       Iter | %d' % res.nit)
-    print('  Objective | %.3f $/hr' % res.fun)
-    print('  VA (deg)  | %s' % np.array2string(res_va[0:7], formatter=float_fmtr))
-    print('  VM (pu)   | %s' % np.array2string(res_vm[0:7], formatter=float_fmtr))
-    print('  PG (MW)   | %s' % np.array2string(res_pg, formatter=float_fmtr))
-    print('  QG (MVAR) | %s' % np.array2string(res_qg, formatter=float_fmtr))
-    print('___________ | ')  
-
     return res
     
 
@@ -151,7 +132,7 @@ def runcopf(c, flat_start):
 
 def costfcn(x, c):
     ng = c.gen.shape[0]
-    ii = get_var_idx(c)
+    ii = case.get_var_idx(c)
 
     pg = c.mva_base * x[ii['i1']['pg']:ii['iN']['pg']]
     qg = c.mva_base * x[ii['i1']['qg']:ii['iN']['qg']]
@@ -164,7 +145,7 @@ def costfcn(x, c):
 
 def costfcn_jac(x, c):
     ng = c.gen.shape[0]
-    ii = get_var_idx(c)
+    ii = case.get_var_idx(c)
 
     pg = c.mva_base * x[ii['i1']['pg']:ii['iN']['pg']]
     qg = c.mva_base * x[ii['i1']['qg']:ii['iN']['qg']]
@@ -195,7 +176,7 @@ def costfcn_hess(x, c):
     return d2f
 
 def polycost(cost_metrics, pg):
-    const = Const()
+    const = case.Const()
     cost = 0.
     pn = int(cost_metrics[const.NCOST])
     for pi in range(pn):
@@ -204,7 +185,7 @@ def polycost(cost_metrics, pg):
     return cost
 
 def polycost_jac(cost_metrics, pg):
-    const = Const()
+    const = case.Const()
     cost = 0.
     pn = int(cost_metrics[const.NCOST])
     for pi in range(1, pn):
@@ -213,7 +194,7 @@ def polycost_jac(cost_metrics, pg):
     return cost
 
 def polycost_hess(cost_metrics, pg):
-    const = Const()
+    const = case.Const()
     cost = 0.
     pn = int(cost_metrics[const.NCOST])
     for pi in range(2, pn):
@@ -234,13 +215,13 @@ def build_bound_cons(xmin, xmax):
 
 
 def acpf_consfcn(x, c):
-    const = Const()
+    const = case.Const()
 
     nb = c.bus.shape[0]
     ng = c.gen.shape[0]
     nbr = c.branch.shape[0]
 
-    ii = get_var_idx(c)
+    ii = case.get_var_idx(c)
     va = x[ii['i1']['va']:ii['iN']['va']]
     vm = x[ii['i1']['vm']:ii['iN']['vm']]
     pg = x[ii['i1']['pg']:ii['iN']['pg']]
@@ -258,14 +239,14 @@ def acpf_consfcn(x, c):
     return np.concatenate((np.real(mis), np.imag(mis)))
 
 def acpf_consfcn_jac(x, c):
-    const = Const()
+    const = case.Const()
 
     nb  = c.bus.shape[0]
     ng  = c.gen.shape[0]
     nbr = c.branch.shape[0]
     nx  = 2 * (nb + ng)
 
-    ii       = get_var_idx(c)
+    ii       = case.get_var_idx(c)
     g_idx    = np.array(range(0, ng), dtype=int)
     gbus_idx = np.array(c.gen[:, const.GEN_BUS] - 1, dtype=int)
     cons_idx = np.array(range(2 * nb), dtype=int)
@@ -316,13 +297,13 @@ def dSbus_dV(Ybus, V):
     return dSbus_dVa, dSbus_dVm 
 
 def linerating_consfcn(x, c):
-    const = Const()
+    const = case.Const()
 
     nb  = c.bus.shape[0]
     ng  = c.gen.shape[0]
     nbr = c.branch.shape[0]
 
-    ii       = get_var_idx(c)
+    ii       = case.get_var_idx(c)
     va_idx   = np.array(range(ii['i1']['va'], ii['iN']['va']), dtype=int)
     vm_idx   = np.array(range(ii['i1']['vm'], ii['iN']['vm']), dtype=int)
     fbus_idx = np.array(c.branch[:, const.F_BUS] - 1, dtype=int)
@@ -348,14 +329,14 @@ def linerating_consfcn(x, c):
                            Streal_sq + Stimag_sq - flow_max))
 
 def linerating_consfcn_jac(x, c):
-    const = Const()
+    const = case.Const()
 
     nb  = c.bus.shape[0]
     ng  = c.gen.shape[0]
     nbr = c.branch.shape[0]
     nx  = 2 * (nb + ng)
 
-    ii       = get_var_idx(c)
+    ii       = case.get_var_idx(c)
     va_idx   = np.array(range(ii['i1']['va'], ii['iN']['va']), dtype=int)
     vm_idx   = np.array(range(ii['i1']['vm'], ii['iN']['vm']), dtype=int)
     fbus_idx = np.array(c.branch[:, const.F_BUS] - 1, dtype=int)
@@ -381,7 +362,7 @@ def linerating_consfcn_jac(x, c):
     return -dh.toarray()
 
 def dSbr_dV(branch, Yf, Yt, V):
-    const = Const()
+    const = case.Const()
 
     nb  = V.shape[0]
     nbr = branch.shape[0]
@@ -438,7 +419,7 @@ def dAbr_dV(dSf_dVa, dSf_dVm, dSt_dVa, dSt_dVm, Sf, St):
 # region [ Powerflow-related Functions ]
 
 def makeSbus(mva_base, bus, gen):
-    const = Const()
+    const = case.Const()
 
     nb = bus.shape[0]
     ng = gen.shape[0]
@@ -453,7 +434,7 @@ def makeSbus(mva_base, bus, gen):
     return Sbusg - Sbusd
 
 def makeYbus(c):
-    const = Const()
+    const = case.Const()
 
     nb = c.bus.shape[0]
     ng = c.gen.shape[0]
