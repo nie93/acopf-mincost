@@ -1,9 +1,12 @@
 from .case import *
 from .arithmetic import *
 import numpy as np
-import ipopt
 from scipy.optimize import minimize
-from pdb import set_trace
+
+try:
+    import ipopt
+except ImportError:
+    print('***  Module "cyipopt" not found. Can only solve by "scipy.optimize"')
 
 
 class OpfResult(object):
@@ -31,45 +34,14 @@ class IpoptOptimizer(object):
         self.result = OpfResult()
 
     def build_optmdl(self, flat_start):
-        const = Const()
-        
-        nb     = self.case.bus.shape[0]
-        ng     = self.case.gen.shape[0]
-        nbr    = self.case.branch.shape[0]
-        neq    = 2 * nb
-        niq    = 2 * ng + nb + nbr
-        neqnln = 2 * nb
-        niqnln = nbr
 
-        ii = get_var_idx(self.case)
-
-        if flat_start:
-            self.x0 = np.concatenate((deg2rad(self.case.bus.take(const.VA, axis=1)), \
-                self.case.bus[:,[const.VMIN, const.VMAX]].mean(axis=1), \
-                self.case.gen[:,[const.PMAX, const.PMIN]].mean(axis=1) / self.case.mva_base, \
-                self.case.gen[:,[const.QMAX, const.QMIN]].mean(axis=1) / self.case.mva_base), axis=0)
-            # self.x0 = np.concatenate((np.zeros(nb), \
-            #     self.case.bus[:,[const.VMIN, const.VMAX]].mean(axis=1), \
-            #     self.case.gen[:,[const.PMAX, const.PMIN]].mean(axis=1) / self.case.mva_base, \
-            #     self.case.gen[:,[const.QMAX, const.QMIN]].mean(axis=1) / self.case.mva_base), axis=0)
-        else:
-            self.x0 = np.genfromtxt(os.path.join(self.case.path, "x0.csv"), delimiter=',')
-
-
-        self.xmin = np.concatenate((-np.inf * np.ones(nb), \
-                            self.case.bus[:, const.VMIN], \
-                            self.case.gen[:, const.PMIN] / self.case.mva_base, \
-                            self.case.gen[:, const.QMIN] / self.case.mva_base), axis=0)
-        self.xmax = np.concatenate((np.inf * np.ones(nb), \
-                            self.case.bus[:, const.VMAX], \
-                            self.case.gen[:, const.PMAX] / self.case.mva_base, \
-                            self.case.gen[:, const.QMAX] / self.case.mva_base), axis=0)
-
-        self.xmin[(self.case.bus[:, const.BUS_TYPE] == 3).nonzero()] = 0
-        self.xmax[(self.case.bus[:, const.BUS_TYPE] == 3).nonzero()] = 0
+        self.x0 = build_varinit(self.case, flat_start)
+        self.xmin, self.xmax = build_varbounds(self.case)
 
         self.opf_mdl = IpoptModel(self.case)
 
+        nb = self.case.bus.shape[0]
+        nbr = self.case.branch.shape[0]
         self.cl = np.concatenate((np.zeros(2 * nb), np.zeros(2 * nbr)))
         self.cu = np.concatenate((np.zeros(2 * nb), np.inf * np.ones(2 * nbr)))
 
@@ -132,6 +104,8 @@ class ScipyOptimizer(object):
     def __init__(self, c):
         self.case = c
         self.x0 = None
+        self.xmin = None
+        self.xmax = None
         self.fun = None
         self.jac = None
         self.hess = None
@@ -140,51 +114,16 @@ class ScipyOptimizer(object):
         self.result = OpfResult()
 
     def build_optmdl(self, flat_start):
-        
-        const = Const()
-        
-        nb     = self.case.bus.shape[0]
-        ng     = self.case.gen.shape[0]
-        nbr    = self.case.branch.shape[0]
-        neq    = 2 * nb
-        niq    = 2 * ng + nb + nbr
-        neqnln = 2 * nb
-        niqnln = nbr
-
-        ii = get_var_idx(self.case)
-
-        if flat_start:
-            self.x0 = np.concatenate((deg2rad(self.case.bus.take(const.VA, axis=1)), \
-                self.case.bus[:,[const.VMIN, const.VMAX]].mean(axis=1), \
-                self.case.gen[:,[const.PMAX, const.PMIN]].mean(axis=1) / self.case.mva_base, \
-                self.case.gen[:,[const.QMAX, const.QMIN]].mean(axis=1) / self.case.mva_base), axis=0)
-            # self.x0 = np.concatenate((np.zeros(nb), \
-            #     self.case.bus[:,[const.VMIN, const.VMAX]].mean(axis=1), \
-            #     self.case.gen[:,[const.PMAX, const.PMIN]].mean(axis=1) / self.case.mva_base, \
-            #     self.case.gen[:,[const.QMAX, const.QMIN]].mean(axis=1) / self.case.mva_base), axis=0)
-        else:
-            self.x0 = np.genfromtxt(os.path.join(self.case.path, "x0.csv"), delimiter=',')
 
         self.fun = lambda x: costfcn(x, self.case)
         self.jac = lambda x: costfcn_jac(x, self.case)
         self.hess = lambda x: costfcn_hess(x, self.case)
+        self.x0 = build_varinit(self.case, flat_start)
+        self.xmin, self.xmax = build_varbounds(self.case)
 
-
-        xmin = np.concatenate((-np.inf * np.ones(nb), \
-                            self.case.bus[:, const.VMIN], \
-                            self.case.gen[:, const.PMIN] / self.case.mva_base, \
-                            self.case.gen[:, const.QMIN] / self.case.mva_base), axis=0)
-        xmax = np.concatenate((np.inf * np.ones(nb), \
-                            self.case.bus[:, const.VMAX], \
-                            self.case.gen[:, const.PMAX] / self.case.mva_base, \
-                            self.case.gen[:, const.QMAX] / self.case.mva_base), axis=0)
-
-        xmin[(self.case.bus[:, const.BUS_TYPE] == 3).nonzero()] = 0
-        xmax[(self.case.bus[:, const.BUS_TYPE] == 3).nonzero()] = 0
-        
         self.bounds = ()
-        for vi in range(len(xmin)):
-            self.bounds += ((xmin[vi], xmax[vi]),)
+        for vi in range(len(self.xmin)):
+            self.bounds += ((self.xmin[vi], self.xmax[vi]),)
         
         eqcons   = {'type': 'eq',
                     'fun' : lambda x: acpf_consfcn(x, self.case),
@@ -209,3 +148,25 @@ class ScipyOptimizer(object):
         self.result.message = res.message
         self.result.nit = res.nit
         return self.result
+
+
+class MipsOptimizer(object):
+
+    def __init__(self, c):
+        self.case = c
+        self.x0 = None
+        self.fun = None
+        self.jac = None
+        self.hess = None
+        self.bounds = None
+        self.constraints = None
+        self.result = OpfResult()
+
+    def build_optmdl(self, flat_start):
+        return 0
+
+    def solve(self, flat_start):
+        self.build_optmdl(flat_start)
+        return self.result
+
+

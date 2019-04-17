@@ -1,9 +1,10 @@
-     Status | Exit mode 1
-    Message | Algorithm stopped at a point that was converged, not to "desired" tolerances, but to "acceptable" tolerances (see the acceptable-... options).
-       Iter | -1
+___________ 
+     Status | Exit mode 0
+    Message | Optimization terminated successfully.
+       Iter | 22
   Objective | 576.892 $/hr
   VA (deg)  | [  0.000  -0.763  -2.390  -2.839  -2.486  -3.229  -3.491]
   VM (pu)   | [  0.982   0.979   0.977   0.976   0.971   0.972   0.962]
-  PG (MW)   | [ 41.542  55.402  22.741  39.909  16.267  16.200]
+  PG (MW)   | [ 41.542  55.402  22.741  39.909  16.266  16.200]
   QG (MVAR) | [ -5.436   1.676  34.203  31.755   6.959  35.922]
 ___________ | 

@@ -36,6 +36,6 @@ def execute_opf(c, number):
 if __name__ == "__main__":
     const = case.Const()
     c = import_opf_case(r'./data/case30')
-    res = execute_opf(c, 1)
+    res = execute_opf(c, 10)
     case.write_results(r'./var/log/opfout_%s.log' % c.casename, c, res)
     

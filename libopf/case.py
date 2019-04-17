@@ -2,7 +2,6 @@ from math import pi
 import csv
 import numpy as np
 import os
-from pdb import set_trace
 
 
 class Const(object):
@@ -117,6 +116,43 @@ def get_var_idx(c):
           'iN': {'va': nb, 'vm': 2*nb, 'pg': 2*nb+ng, 'qg': 2*(nb+ng)}}
     return ii
 
+def build_varinit(c, flat_start):
+    const = Const()
+    nb = c.bus.shape[0]
+    ii = get_var_idx(c)
+
+    if flat_start:
+        x0 = np.concatenate((deg2rad(c.bus.take(const.VA, axis=1)), \
+            c.bus[:,[const.VMIN, const.VMAX]].mean(axis=1), \
+            c.gen[:,[const.PMAX, const.PMIN]].mean(axis=1) / c.mva_base, \
+            c.gen[:,[const.QMAX, const.QMIN]].mean(axis=1) / c.mva_base), axis=0)
+        # x0 = np.concatenate((np.zeros(nb), \
+        #     c.bus[:,[const.VMIN, const.VMAX]].mean(axis=1), \
+        #     c.gen[:,[const.PMAX, const.PMIN]].mean(axis=1) / c.mva_base, \
+        #     c.gen[:,[const.QMAX, const.QMIN]].mean(axis=1) / c.mva_base), axis=0)
+    else:
+        x0 = np.genfromtxt(os.path.join(c.path, "x0.csv"), delimiter=',')
+    
+    return x0
+
+def build_varbounds(c):
+    const = Const()
+    nb = c.bus.shape[0]
+
+    xmin = np.concatenate((-np.inf * np.ones(nb), \
+                        c.bus[:, const.VMIN], \
+                        c.gen[:, const.PMIN] / c.mva_base, \
+                        c.gen[:, const.QMIN] / c.mva_base), axis=0)
+    xmax = np.concatenate((np.inf * np.ones(nb), \
+                        c.bus[:, const.VMAX], \
+                        c.gen[:, const.PMAX] / c.mva_base, \
+                        c.gen[:, const.QMAX] / c.mva_base), axis=0)
+
+    xmin[(c.bus[:, const.BUS_TYPE] == 3).nonzero()] = 0
+    xmax[(c.bus[:, const.BUS_TYPE] == 3).nonzero()] = 0
+
+    return (xmin, xmax)
+
 def write_results(filepath, c, r):
 
     ii = get_var_idx(c)
@@ -127,7 +163,7 @@ def write_results(filepath, c, r):
 
     float_fmtr = {'float_kind': lambda x: "%7.3f" % x}
 
-    msg = ''
+    msg = '___________ \n'
     msg += '     Status | Exit mode %d\n' % r.status
     msg += '    Message | %s\n' % r.message
     msg += '       Iter | %d\n' % r.nit
@@ -139,7 +175,6 @@ def write_results(filepath, c, r):
     msg += '___________ | \n'
 
     if filepath == None:
-        print('___________ ')
         print(msg)
     else:
         with open(filepath, 'w+') as f:

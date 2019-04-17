@@ -82,13 +82,6 @@ def polycost_hess(cost_metrics, pg):
 
 # region [ Constraint Functions ]
 
-# def build_bound_cons(xmin, xmax):
-#     b = ()
-#     for vi in range(len(xmin)):
-#         b += ((xmin[vi], xmax[vi]),)
-#     return b
-
-
 def acpf_consfcn(x, c):
     const = Const()
 
