@@ -26,7 +26,7 @@ def execute_opf(c, number):
         ii = case.get_var_idx(c)
 
         float_fmtr = {'float_kind': lambda x: "%7.3f" % x}
-        # pprint(res.x)
+        # pprint(res['x'])
         case.write_results(None, c, res)
         print("Optimal Outputs: %s" % str(res.x[ii['i1']['pg']:ii['iN']['pg']] * c.mva_base))
         print('Optimization execution time: %.8f' % (end_time - start_time))
@@ -36,6 +36,6 @@ def execute_opf(c, number):
 if __name__ == "__main__":
     const = case.Const()
     c = import_opf_case(r'./data/case30')
-    res = execute_opf(c, 10)
+    res = execute_opf(c, 1)
     case.write_results(r'./var/log/opfout_%s.log' % c.casename, c, res)
     

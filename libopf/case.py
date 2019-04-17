@@ -2,6 +2,7 @@ from math import pi
 import csv
 import numpy as np
 import os
+from pdb import set_trace
 
 
 class Const(object):
@@ -130,7 +131,7 @@ def write_results(filepath, c, r):
     msg += '     Status | Exit mode %d\n' % r.status
     msg += '    Message | %s\n' % r.message
     msg += '       Iter | %d\n' % r.nit
-    msg += '  Objective | %.3f $/hr\n' % r.fun
+    msg += '  Objective | %.3f $/hr\n' % r.objval
     msg += '  VA (deg)  | %s\n' % np.array2string(res_va[0:7], formatter=float_fmtr)
     msg += '  VM (pu)   | %s\n' % np.array2string(res_vm[0:7], formatter=float_fmtr)
     msg += '  PG (MW)   | %s\n' % np.array2string(res_pg, formatter=float_fmtr)

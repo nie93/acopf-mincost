@@ -200,7 +200,7 @@ def linerating_consfcn(x, c):
     Streal_sq = np.real(St) ** 2
     Stimag_sq = np.imag(St) ** 2
 
-    return - np.concatenate((Sfreal_sq + Sfimag_sq - flow_max, \
+    return -np.concatenate((Sfreal_sq + Sfimag_sq - flow_max, \
                            Streal_sq + Stimag_sq - flow_max))
 
 def linerating_consfcn_jac(x, c):

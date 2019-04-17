@@ -1,6 +1,6 @@
      Status | Exit mode 0
-    Message | Optimization terminated successfully.
-       Iter | 14
+    Message | Algorithm terminated successfully at a locally optimal point, satisfying the convergence tolerances (can be specified by options).
+       Iter | -1
   Objective | 8081.525 $/hr
   VA (deg)  | [  0.000  -4.022  -9.926  -8.665  -7.428 -12.689 -11.188]
   VM (pu)   | [  1.060   1.041   1.016   1.014   1.016   1.060   1.046]

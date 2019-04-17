@@ -1,9 +1,21 @@
 from .case import *
 from .arithmetic import *
 import numpy as np
-# import ipopt
+import ipopt
 from scipy.optimize import minimize
 from pdb import set_trace
+
+
+class OpfResult(object):
+
+    def __init__(self):
+        self.solved = False
+        self.success = None
+        self.x = None
+        self.status = None
+        self.objval = None
+        self.message = None
+        self.nit = None
 
 
 class IpoptOptimizer(object):
@@ -14,6 +26,9 @@ class IpoptOptimizer(object):
         self.xmin = None
         self.xmax = None
         self.opf_mdl = None
+        self.cl = None
+        self.cu = None
+        self.result = OpfResult()
 
     def build_optmdl(self, flat_start):
         const = Const()
@@ -55,15 +70,23 @@ class IpoptOptimizer(object):
 
         self.opf_mdl = IpoptModel(self.case)
 
+        self.cl = np.concatenate((np.zeros(2 * nb), np.zeros(2 * nbr)))
+        self.cu = np.concatenate((np.zeros(2 * nb), np.inf * np.ones(2 * nbr)))
 
-    def solve(self):
-        cl = np.concatenate((np.zeros(2 * nb), -np.inf * np.ones(2 * nbr)))
-        cu = np.concatenate((np.zeros(2 * nb), np.zeros(2 * nbr)))
 
-        nlp = ipopt.problem(n=len(self.x0), m=len(cl), lb=self.xmin, ub=self.xmax, \
-            cl=cl, cu=cu, problem_obj=self.opf_mdl)
+    def solve(self, flat_start):
+        self.build_optmdl(flat_start)
+        nlp = ipopt.problem(n=len(self.x0), m=len(self.cl), lb=self.xmin, ub=self.xmax, \
+            cl=self.cl, cu=self.cu, problem_obj=self.opf_mdl)
 
-        return nlp.solve(x0)
+        res_x, res_info = nlp.solve(self.x0)
+        self.result.solved = True
+        self.result.x = res_x
+        self.result.status = res_info['status']
+        self.result.objval = res_info['obj_val']
+        self.result.message = res_info['status_msg']
+        self.result.nit = -1 # Not callable from cyipopt
+        return self.result
 
 
 class IpoptModel(object):
@@ -77,18 +100,11 @@ class IpoptModel(object):
     def gradient(self, x):
         return costfcn_jac(x, self.case)
 
-    def constraints(self, x):       
-        const = Const() 
-        ii = get_var_idx(self.case)
-        tload = sum(self.case.bus[:,const.PD]) / self.case.mva_base
-        return sum(x[ii['i1']['pg']:ii['iN']['pg']]) - tload
+    def constraints(self, x):
+        return np.concatenate((acpf_consfcn(x, self.case), linerating_consfcn(x, self.case)))
 
-    def jacobian(self, x):        
-        const = Const() 
-        ii = get_var_idx(self.case)
-        simple_powerbalance = np.zeros_like(x)
-        simple_powerbalance[ii['i1']['pg']:ii['iN']['pg']] = 1
-        return simple_powerbalance
+    def jacobian(self, x):
+        return np.concatenate((acpf_consfcn_jac(x, self.case), linerating_consfcn_jac(x, self.case)))
 
     def intermediate(
         self,
@@ -121,6 +137,7 @@ class ScipyOptimizer(object):
         self.hess = None
         self.bounds = None
         self.constraints = None
+        self.result = OpfResult()
 
     def build_optmdl(self, flat_start):
         
@@ -181,5 +198,14 @@ class ScipyOptimizer(object):
 
     def solve(self, flat_start):
         self.build_optmdl(flat_start)
-        return minimize(self.fun, self.x0, jac=self.jac, hess=self.hess, bounds=self.bounds, \
+        res = minimize(self.fun, self.x0, jac=self.jac, hess=self.hess, bounds=self.bounds, \
             constraints=self.constraints, options={'disp': False})
+
+        
+        self.result.solved = True
+        self.result.x = res.x
+        self.result.status = res.status
+        self.result.objval = res.fun
+        self.result.message = res.message
+        self.result.nit = res.nit
+        return self.result
