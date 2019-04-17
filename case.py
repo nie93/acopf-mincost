@@ -85,6 +85,7 @@ class Case(object):
         const = Const()
 
         self.path       = path
+        self.casename   = path.replace('.', '').replace('/', '_')
         self.bus        = np.genfromtxt(os.path.join(path, "bus.csv"), delimiter=',')
         self.gen        = np.genfromtxt(os.path.join(path, "gen.csv"), delimiter=',')
         self.branch     = np.genfromtxt(os.path.join(path, "branch.csv"), delimiter=',')
@@ -102,3 +103,31 @@ class Case(object):
         self.branch[:, col] = multi * self.branch[:, col]
 
 
+def get_var_idx(c):
+    nb = c.bus.shape[0]
+    ng = c.gen.shape[0]
+    ii = {'N': {'va': nb, 'vm': nb, 'pg': ng, 'qg': ng}, \
+          'i1': {'va': 0, 'vm': nb, 'pg': 2*nb, 'qg': 2*nb+ng}, \
+          'iN': {'va': nb, 'vm': 2*nb, 'pg': 2*nb+ng, 'qg': 2*(nb+ng)}}
+    return ii
+
+def write_results(filepath, c, r):
+
+    ii = get_var_idx(c)
+    res_va = rad2deg(r.x[ii['i1']['va']:ii['iN']['va']])
+    res_vm = r.x[ii['i1']['vm']:ii['iN']['vm']]
+    res_pg = r.x[ii['i1']['pg']:ii['iN']['pg']] * c.mva_base
+    res_qg = r.x[ii['i1']['qg']:ii['iN']['qg']] * c.mva_base
+
+    float_fmtr = {'float_kind': lambda x: "%7.3f" % x}
+
+    with open(filepath, 'w+') as f:
+        f.write('     Status | Exit mode %d\n' % r.status)
+        f.write('    Message | %s\n' % r.message)
+        f.write('       Iter | %d\n' % r.nit)
+        f.write('  Objective | %.3f $/hr\n' % r.fun)
+        f.write('  VA (deg)  | %s\n' % np.array2string(res_va[0:7], formatter=float_fmtr))
+        f.write('  VM (pu)   | %s\n' % np.array2string(res_vm[0:7], formatter=float_fmtr))
+        f.write('  PG (MW)   | %s\n' % np.array2string(res_pg, formatter=float_fmtr))
+        f.write('  QG (MVAR) | %s\n' % np.array2string(res_qg, formatter=float_fmtr))
+        f.write('___________ | \n')

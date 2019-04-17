@@ -1,4 +1,6 @@
-from case import Case, Const
+from arithmetic import *
+from case import *
+import numpy as np
 import opf
 import time
 from pdb import set_trace
@@ -17,24 +19,21 @@ def set_starting_output(c, pg):
     return c
 
 def execute_opf(c, number):
-    for i in range(0, number):
+    for exec_count in range(0, number):
         start_time = time.time()
         res = opf.runcopf(c, flat_start=True)
         end_time = time.time()
-        print("Optimal Outputs: %s" % str(res['PG']))
+        # print("Optimal Outputs: %s" % str(res['PG']))
         print('Optimization execution time: %.8f' % (end_time - start_time))
     
     return res
 
 def main():
     const = Const()
-    c = import_opf_case('./data/case30/')
-    # c = set_starting_output(c, [40.05814367749094, 70.12544088354686, 78.47923733719254])
-    # c.set_branch_prop('RATE', [14], [34.999])
-    # c.scale_branch_prop([const.BR_R, const.BR_X], multi=1.0)    
-
+    c = import_opf_case(r'./data/case14/')
     res = execute_opf(c, 1)
-    set_trace()
+    write_results(r'./var/log/opfout_%s.log' % c.casename, c, res)
+    # set_trace()
 
 if __name__ == "__main__":
     main()

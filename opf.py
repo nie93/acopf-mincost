@@ -1,5 +1,5 @@
 from arithmetic import *
-from case import Case, Const
+from case import *
 # import ipopt
 import numpy as np
 from scipy.sparse import *
@@ -122,10 +122,8 @@ def runcopf(c, flat_start):
     all_cons = (eqcons, ineqcons)
     bnds = build_bound_cons(xmin, xmax)
 
-    start_time = time()
     res = minimize(f_fcn, x0, jac=df_fcn, hess=d2f_fcn, bounds=bnds, \
         constraints=all_cons, options={'disp': False})
-    end_time = time()
 
     ii = get_var_idx(c)
     res_va = rad2deg(res.x[ii['i1']['va']:ii['iN']['va']])
@@ -136,10 +134,9 @@ def runcopf(c, flat_start):
     float_fmtr = {'float_kind': lambda x: "%7.3f" % x}
 
     print('___________')  
-    print('     Statue | Exit mode %d' % res.status)
+    print('     Status | Exit mode %d' % res.status)
     print('    Message | %s' % res.message)
     print('       Iter | %d' % res.nit)
-    print('   Time (s) | %.8f' % (end_time - start_time))
     print('  Objective | %.3f $/hr' % res.fun)
     print('  VA (deg)  | %s' % np.array2string(res_va[0:7], formatter=float_fmtr))
     print('  VM (pu)   | %s' % np.array2string(res_vm[0:7], formatter=float_fmtr))
@@ -147,7 +144,7 @@ def runcopf(c, flat_start):
     print('  QG (MVAR) | %s' % np.array2string(res_qg, formatter=float_fmtr))
     print('___________ | ')  
 
-    return {'VA': res_va.tolist(), 'VM': res_vm.tolist(), 'PG': res_pg.tolist(), 'QG': res_qg.tolist()}
+    return res
     
 
 # region [ Cost-Related Functions ]
@@ -497,11 +494,3 @@ def makeYbus(c):
     return Ybus, Yf, Yt
 
 # endregion
-
-def get_var_idx(c):
-    nb = c.bus.shape[0]
-    ng = c.gen.shape[0]
-    ii = {'N': {'va': nb, 'vm': nb, 'pg': ng, 'qg': ng}, \
-          'i1': {'va': 0, 'vm': nb, 'pg': 2*nb, 'qg': 2*nb+ng}, \
-          'iN': {'va': nb, 'vm': 2*nb, 'pg': 2*nb+ng, 'qg': 2*(nb+ng)}}
-    return ii

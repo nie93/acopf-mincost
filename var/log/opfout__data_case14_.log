@@ -1,0 +1,9 @@
+     Status | Exit mode 0
+    Message | Optimization terminated successfully.
+       Iter | 14
+  Objective | 8081.525 $/hr
+  VA (deg)  | [  0.000  -4.022  -9.926  -8.665  -7.428 -12.689 -11.188]
+  VM (pu)   | [  1.060   1.041   1.016   1.014   1.016   1.060   1.046]
+  PG (MW)   | [194.330  36.719  28.743   0.000   8.495]
+  QG (MVAR) | [  0.000  23.685  24.127  11.546   8.273]
+___________ | 
