@@ -1,4 +1,4 @@
-from .arithmetic import *
+from math import pi
 import csv
 import numpy as np
 import os
@@ -101,6 +101,12 @@ class Case(object):
     def scale_branch_prop(self, col, multi):
         self.branch[:, col] = multi * self.branch[:, col]
 
+
+def deg2rad(d):
+    return d / 180 * pi
+
+def rad2deg(r):
+    return r / pi * 180    
 
 def get_var_idx(c):
     nb = c.bus.shape[0]

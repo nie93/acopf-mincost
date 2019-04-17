@@ -1,4 +1,4 @@
-from . import case
+from .case import *
 from .arithmetic import *
 import numpy as np
 # import ipopt
@@ -16,7 +16,7 @@ class IpoptOptimizer(object):
         self.opf_mdl = None
 
     def build_optmdl(self, flat_start):
-        const = case.Const()
+        const = Const()
         
         nb     = self.case.bus.shape[0]
         ng     = self.case.gen.shape[0]
@@ -26,7 +26,7 @@ class IpoptOptimizer(object):
         neqnln = 2 * nb
         niqnln = nbr
 
-        ii = case.get_var_idx(self.case)
+        ii = get_var_idx(self.case)
 
         if flat_start:
             self.x0 = np.concatenate((deg2rad(self.case.bus.take(const.VA, axis=1)), \
@@ -78,13 +78,13 @@ class IpoptModel(object):
         return costfcn_jac(x, self.case)
 
     def constraints(self, x):       
-        const = case.Const() 
+        const = Const() 
         ii = get_var_idx(self.case)
         tload = sum(self.case.bus[:,const.PD]) / self.case.mva_base
         return sum(x[ii['i1']['pg']:ii['iN']['pg']]) - tload
 
     def jacobian(self, x):        
-        const = case.Const() 
+        const = Const() 
         ii = get_var_idx(self.case)
         simple_powerbalance = np.zeros_like(x)
         simple_powerbalance[ii['i1']['pg']:ii['iN']['pg']] = 1
@@ -124,7 +124,7 @@ class ScipyOptimizer(object):
 
     def build_optmdl(self, flat_start):
         
-        const = case.Const()
+        const = Const()
         
         nb     = self.case.bus.shape[0]
         ng     = self.case.gen.shape[0]
@@ -134,7 +134,7 @@ class ScipyOptimizer(object):
         neqnln = 2 * nb
         niqnln = nbr
 
-        ii = case.get_var_idx(self.case)
+        ii = get_var_idx(self.case)
 
         if flat_start:
             self.x0 = np.concatenate((deg2rad(self.case.bus.take(const.VA, axis=1)), \
